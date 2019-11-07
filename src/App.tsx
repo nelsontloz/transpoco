@@ -1,13 +1,86 @@
-import React from 'react';
+import React, { ChangeEvent } from 'react';
 import './App.scss';
-import Chart from './chart';
+import Chart from './components/chart';
+import dayjs from 'dayjs';
+import LocationSelector from './components/LocationSelector';
+import { OpenaqService } from './services/openaq.service';
+import { Measurement } from './models/Measurement.model';
+import { Location } from './models/Location.model';
 
 class App extends React.Component {
+  state = {
+    selectedLocation: null,
+    measurements: [],
+    labels: [],
+  };
+
+  handleLocationSelected = async (location: Location) => {
+    if (!location) {
+      return;
+    }
+    this.setState({
+      selectedLocation: location,
+    });
+    const last = dayjs(location.lastUpdated);
+
+    let start = last.clone();
+    let end = start.subtract(1, 'week');
+
+    const measurements = await OpenaqService.getMeasurements({
+      location: location.location,
+      date_from: end.format('YYYY-MM-DD'),
+      date_to: start.format('YYYY-MM-DD'),
+      limit: 1000,
+      parameter: 'so2',
+    });
+
+    const values = measurements.data.results.map((measure: Measurement) => {
+      return measure.value;
+    });
+
+    const labels = measurements.data.results.map((measure: Measurement) => {
+      return dayjs(measure.date.local).format('DD/MM/YYYY');
+    });
+
+    this.setState({
+      measurements: values,
+      labels: labels,
+    });
+  };
+
+  handleSelectParameter(event: ChangeEvent<HTMLSelectElement>) {
+    console.log(event.target.value);
+  }
+
   render() {
     return (
       <div className='container'>
-        <div className='section'>asdm as j kkj ,k k,</div>
-        <Chart></Chart>
+        <div className='section'>
+          <div className='columns'>
+            <div className='column'>
+              <LocationSelector
+                onLocationSelected={this.handleLocationSelected}
+              ></LocationSelector>
+            </div>
+
+            <div className='column'>
+              <label>Parameter</label>
+              <div className='field'>
+                <div className='select'>
+                  <select onChange={this.handleSelectParameter}>
+                    <option value='so2'>so2</option>
+                    <option value='no2'>no2</option>
+                  </select>
+                </div>
+              </div>
+              <button className='button is-primary'>Apply</button>
+            </div>
+          </div>
+          <Chart
+            data={this.state.measurements}
+            labels={this.state.labels}
+          ></Chart>
+        </div>
       </div>
     );
   }
