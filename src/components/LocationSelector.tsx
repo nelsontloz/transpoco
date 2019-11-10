@@ -1,5 +1,9 @@
 import React, { ChangeEvent } from 'react';
 import { OpenaqService } from '../services/openaq.service';
+import { InputSelect } from './InputSelect';
+import { Country } from '../models/Country.model';
+import { City } from '../models/City.model';
+import { Location } from '../models/Location.model';
 
 type LocationSelectorProps = {
   onLocationSelected: Function;
@@ -8,25 +12,33 @@ type LocationSelectorProps = {
 class LocationSelector extends React.Component<LocationSelectorProps, any> {
   state = {
     countries: [],
+    countriesByName: {} as any,
     selectedCountry: '',
     cities: [],
+    citiesByName: {} as any,
     selectedCity: '',
     locations: [],
+    locationsByName: {} as any,
   };
 
   async componentDidMount() {
-    let countries = await OpenaqService.getCountries();
+    let response = await OpenaqService.getCountries();
+    const countries: Country[] = response.data.results;
+    const countriesByName = {} as any;
+    countries.forEach((country: Country) => {
+      countriesByName[country.name] = country;
+    });
     this.setState({
-      countries: countries.data.results,
+      countries,
+      countriesByName,
     });
   }
 
-  handleSelectCountry = async (event: ChangeEvent<HTMLSelectElement>) => {
-    const selectedCountry = event.target.value;
+  handleSelectCountry = async (selectedCountry: string) => {
     this.setState({
       selectedCountry,
     });
-    this.updateCities(selectedCountry);
+    this.updateCities(this.state.countriesByName[selectedCountry].code);
   };
 
   updateCities = async (selectedCountry: string) => {
@@ -36,14 +48,21 @@ class LocationSelector extends React.Component<LocationSelectorProps, any> {
       });
       return;
     }
-    const cities = await OpenaqService.getCities({ country: selectedCountry });
+    const response = await OpenaqService.getCities({
+      country: selectedCountry,
+    });
+    const cities = response.data.results;
+    const citiesByName = {} as any;
+    cities.forEach((city: City) => {
+      citiesByName[city.name] = city;
+    });
     this.setState({
-      cities: cities.data.results,
+      cities,
+      citiesByName,
     });
   };
 
-  handleSelectCity = async (event: ChangeEvent<HTMLSelectElement>) => {
-    const selectedCity = event.target.value;
+  handleSelectCity = async (selectedCity: string) => {
     this.setState({ selectedCity });
     this.updateLocations(selectedCity);
   };
@@ -55,25 +74,46 @@ class LocationSelector extends React.Component<LocationSelectorProps, any> {
       });
       return;
     }
-    const locations = await OpenaqService.getLocations({ city: selectedCity });
+    const response = await OpenaqService.getLocations({ city: selectedCity });
+    const locations: Location[] = response.data.results;
+    const locationsByName = {} as any;
+    locations.forEach((location: Location) => {
+      locationsByName[location.location] = location;
+    });
     await this.setState({
-      locations: locations.data.results,
+      locations: locations.map((location: Location) => {
+        return location.location;
+      }),
+      locationsByName,
     });
   };
 
-  handleSelectLocation = async (event: ChangeEvent<HTMLSelectElement>) => {
-    const location = event.target.value;
-    if (location === '') {
+  handleSelectLocation = async (locationName: string) => {
+    if (locationName === '') {
       return;
     }
-    this.props.onLocationSelected(this.state.locations[+location]);
+    this.props.onLocationSelected(this.state.locationsByName[locationName]);
   };
 
   render() {
     return (
       <div>
         <label>Country</label>
+
         <div className='field'>
+          <InputSelect
+            options={this.state.countries
+              .filter((country: any) => {
+                return country.name;
+              })
+              .map((country: any) => {
+                return country.name as string;
+              })}
+            onChange={this.handleSelectCountry}
+          ></InputSelect>
+        </div>
+
+        {/* <div className='field'>
           <div className='select'>
             <select onChange={this.handleSelectCountry}>
               <option value=''>Select a country</option>
@@ -93,44 +133,34 @@ class LocationSelector extends React.Component<LocationSelectorProps, any> {
                 })}
             </select>
           </div>
-        </div>
+        </div> */}
 
         <label>City</label>
         <div className='field'>
-          <div className='select'>
+          <InputSelect
+            options={this.state.cities.map((city: any) => {
+              return city.name;
+            })}
+            onChange={this.handleSelectCity}
+          ></InputSelect>
+
+          {/* <div className='select'>
             <select
               onChange={this.handleSelectCity}
               disabled={this.state.selectedCountry === ''}
             >
               <option value=''>Select a city</option>
-              {this.state.cities.map((city: any, index: number) => {
-                return (
-                  <option key={`${city.name}-${index}`} value={city.name}>
-                    {city.name}
-                  </option>
-                );
-              })}
+              {}
             </select>
-          </div>
+          </div> */}
         </div>
 
         <label>Location</label>
         <div className='field'>
-          <div className='select'>
-            <select
-              onChange={this.handleSelectLocation}
-              disabled={this.state.selectedCity === ''}
-            >
-              <option>Select a location</option>
-              {this.state.locations.map((location: any, index: number) => {
-                return (
-                  <option key={location.id} value={index}>
-                    {location.location}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
+          <InputSelect
+            options={this.state.locations}
+            onChange={this.handleSelectLocation}
+          ></InputSelect>
         </div>
       </div>
     );
