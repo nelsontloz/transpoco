@@ -5,8 +5,7 @@ type ChartProps = {
   data: number[];
   labels: string[];
 };
-export default class Chart extends React.Component<ChartProps, any> {
-  componentDidMount() {}
+export default class Chart extends React.Component<ChartProps, {}> {
   render() {
     return (
       <Line

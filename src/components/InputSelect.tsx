@@ -2,7 +2,7 @@ import React, { ChangeEvent } from 'react';
 
 type InputSelectProps = {
   options: string[];
-  onChange?: (value: string) => any;
+  onChange?: (value: string) => void;
 };
 
 type InputSelectState = {
@@ -37,7 +37,7 @@ export class InputSelect extends React.Component<
 
   renderSelectWithOptions = () => {
     return (
-      <select value={this.state.selected} onChange={this.handleSelected}>
+      <select onChange={this.handleSelected}>
         <option value=''>Select an option</option>
         {this.props.options.map((country: string, index: number) => {
           return (

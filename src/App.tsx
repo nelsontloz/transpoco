@@ -7,31 +7,54 @@ import { OpenaqService } from './services/openaq.service';
 import { Measurement } from './models/Measurement.model';
 import { Location } from './models/Location.model';
 
-class App extends React.Component {
+type AppState = {
+  measurements: Measurement[];
+  labels: string[];
+};
+class App extends React.Component<any, AppState> {
+  selectedParameter = 'so2';
+  selectedLocation = null as any;
   state = {
-    selectedLocation: null,
     measurements: [],
     labels: [],
   };
 
-  handleLocationSelected = async (location: Location) => {
+  handleLocationSelected = (location: Location) => {
+    this.selectedLocation = null;
     if (!location) {
+      this.setState({
+        measurements: [],
+        labels: [],
+      });
       return;
     }
-    this.setState({
-      selectedLocation: location,
-    });
-    const last = dayjs(location.lastUpdated);
+
+    this.selectedLocation = location;
+    this.loadMeasurements();
+  };
+
+  handleSelectParameter = (event: ChangeEvent<HTMLSelectElement>) => {
+    const parameter = event.target.value;
+    this.selectedParameter = parameter;
+    this.loadMeasurements();
+  };
+
+  loadMeasurements = async () => {
+    const selectedLocation = this.selectedLocation;
+    if (!selectedLocation) {
+      return;
+    }
+    const last = dayjs(selectedLocation.lastUpdated);
 
     let start = last.clone();
     let end = start.subtract(1, 'week');
 
     const measurements = await OpenaqService.getMeasurements({
-      location: location.location,
+      location: selectedLocation.location,
       date_from: end.format('YYYY-MM-DD'),
       date_to: start.format('YYYY-MM-DD'),
       limit: 1000,
-      parameter: 'so2',
+      parameter: this.selectedParameter,
     });
 
     const values = measurements.data.results.map((measure: Measurement) => {
@@ -47,10 +70,6 @@ class App extends React.Component {
       labels: labels,
     });
   };
-
-  handleSelectParameter(event: ChangeEvent<HTMLSelectElement>) {
-    console.log(event.target.value);
-  }
 
   render() {
     return (
@@ -73,7 +92,6 @@ class App extends React.Component {
                   </select>
                 </div>
               </div>
-              <button className='button is-primary'>Apply</button>
             </div>
           </div>
           <Chart
